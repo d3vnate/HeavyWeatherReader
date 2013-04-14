@@ -4,7 +4,6 @@ poll_interval = 15
 store_temperature_C_or_F = F
 
 [weather_data_db]
-;host = 192.168.1.38
 host = 127.0.0.1
 name = weather_data
 user = hwreader
