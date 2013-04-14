@@ -1,5 +1,7 @@
+#!/usr/bin/python
 """
 @author Nate Vogel
+@website http://funtothinkbabout.com
 @last_revision 2013-04-14
 
 HeavyWeatherReader parses data output by the La Crosse Weather Station
@@ -96,10 +98,10 @@ main
 """
 if __name__=="__main__":
     
-    def signal_handler(signal, frame):
+    def signal_handler(signalnum, frame):
         if debug:
-            print signal
-        if signal == signal.SIGINT:
+            print signalnum
+        if signalnum == signal.SIGINT:
             print "Exiting..."
             weather_data_cur.close()
             weather_data_db.close()
