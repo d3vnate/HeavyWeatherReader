@@ -2,6 +2,7 @@
 current_weather_data_file = /cygdrive/c/ProgramData/currdat.lst
 poll_interval = 15
 store_temperature_C_or_F = F
+print_updates_status_interval = 1 
 
 [weather_data_db]
 host = 127.0.0.1
