@@ -1,0 +1,5 @@
+[heavyweatherreader_wunderground]
+user_id = 
+passwd = 
+wu_api_url = http://rtupdate.wunderground.com/weatherstation/updateweatherstation.php
+wu_interval = 14
