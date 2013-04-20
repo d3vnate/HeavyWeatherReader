@@ -12,10 +12,38 @@ import ConfigParser
 import pymysql
 import signal
 import time
-import urllib
+import urllib2
 
 global debug
 debug = False
+
+"""
+encapsulates connection handling in sending weather data
+to wunderground. retries 5 times with 5 seconds between attempts.
+"""
+def send_to_wunderground(upload_url, date_utc):
+    conn_attempt = 1
+    result_str = "%s >>" % date_utc
+    exception_msg = ""
+
+    while conn_attempt < 6 and conn_attempt != 0:
+        try:
+            conn_status = urllib2.urlopen(upload_url)
+            result_str = "%s %s after %d %s" % (result_str, conn_status.read().strip(), conn_attempt, "try" if conn_attempt == 1 else "tries")
+            # set successful connection condition
+            conn_attempt = 0 
+        except Exception, e:
+            exception_msg = e
+            conn_attempt += 1
+            time.sleep(5)
+
+    if conn_attempt == 6:
+        # failed 5 retries so give up on this data submission and return err msg
+        return "%s %s" % (result_str, exception_msg) 
+    else:
+        # probably success 
+        return result_str
+
 
 """
 main
@@ -74,6 +102,7 @@ if __name__=="__main__":
         weather_data_cur = weather_data_db.cursor(pymysql.cursors.DictCursor)
         weather_data_cur.execute(stats_sql)        
 
+        # fetch data and build request URL
         d = weather_data_cur.fetchone()
         date_utc = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         upload_url = "%s?ID=%s&PASSWORD=%s&dateutc=%s&winddir=%s&windspeedmph=%s&dailyrain=%s&tempf=%s&rainin=%s&baromin=%s&dewptf=%s&humidity=%s&windspdmph_avg2m=%s&winddir_avg2m=%s&windgustmph_10m=%s&softwaretype=ftta_wunderground&action=updateraw&realtime=1&rtfreq=%s" % (wu_url, wu_id, wu_pass, date_utc, d['winddir'], d['windspeedmph'], d['dailyrain'], d['tempf'], d['rainin'], d['baromin'], d['dewptf'], d['humidity'], d['windspdmph_avg2m'], d['winddir_avg2m'], d['windgustmph_avg10m'], wu_interval)
@@ -81,9 +110,7 @@ if __name__=="__main__":
         if debug:
             print d,upload_url
         else:
-            status = urllib.urlopen(upload_url)
-            print "%s >> %s" % (date_utc, status.read().strip())
-            status.close()
+            print send_to_wunderground(upload_url, date_utc)
 
         d.clear()
         weather_data_cur.close()
