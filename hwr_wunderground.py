@@ -79,18 +79,25 @@ if __name__=="__main__":
     """
     the stats selection pulls together the most recent data written, as well as generates averages
     as requested by the WUnderground API.
-    not currently an efficient select, produces full tablescan produced 
-    TODO: improve raw_stats schema &/| split raw data into subtables -- maybe done by hwreader.py
+    avg,max calculations utilize derived stats sets ordered by primary key descending so they're always most recent.
+    i.e. in a 2 minute interval, there will be no more than 10 sensor updates (but a set of 50 is used for safety sake).
+    in effect, I exploit pk ordering to yield a constant set size and performance.
     """
     stats_sql = "select wind_direction_deg as winddir, wind_speed as windspeedmph,\
                  temperature_outdoor as tempf, temperature_dewpoint as dewptf,\
                  pressure_relative_inhg as baromin, humidity_outdoor as humidity,\
                  rain_1h as rainin,\
-                 (select sum(rain_1h) from raw_stats where meta_datehour >= concat(curdate(), ' ', '00:00:00')) as dailyrain,\
-                 (select avg(wind_speed) from raw_stats where meta_timestamp > date_sub(now(), INTERVAL 2 MINUTE)) as windspdmph_avg2m,\
-                 (select avg(wind_direction_deg) from raw_stats where meta_timestamp > date_sub(now(), INTERVAL 2 MINUTE)) as winddir_avg2m,\
-                 (select max(wind_speed) from raw_stats where meta_timestamp > date_sub(now(), INTERVAL 10 MINUTE)) as windgustmph_avg10m\
-                 from raw_stats order by meta_actualisation desc limit 1" 
+                 rain_24h as dailyrain,\
+                 (select avg(s1.wind_speed) from\
+                    (select wind_speed,meta_timestamp from raw_stats order by meta_actualisation desc limit 50) as s1\
+                    where s1.meta_timestamp > date_sub(now(), INTERVAL 2 MINUTE)) as windspdmph_avg2m,\
+                 (select avg(s2.wind_direction_deg) from \
+                    (select wind_direction_deg,meta_timestamp from raw_stats order by meta_actualisation desc limit 50) as s2\
+                    where s2.meta_timestamp > date_sub(now(), INTERVAL 2 MINUTE)) as winddir_avg2m,\
+                 (select max(s3.wind_speed) from\
+                     (select wind_speed,meta_timestamp from raw_stats order by meta_actualisation desc limit 100) as s3\
+                     where s3.meta_timestamp > date_sub(now(), INTERVAL 10 MINUTE)) as windgustmph_avg10m\
+                 from raw_stats order by meta_actualisation desc limit 1"
 
     while True:
         # TODO: figure out why db connection ha to be closed in order to get a clean result dict next run
