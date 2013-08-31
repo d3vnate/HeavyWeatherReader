@@ -22,9 +22,11 @@ HWR_WUnderground (HWR_WU) reads data stored by HWR and uploads it to WeatherUnde
 
 
 ## HWR(_WU) Installation and Usage##
-* Requirements: (Tested on CYGWIN, should work against any OS with) Python 2.7 and PyMySQL package. Access to a MySQL database server.
+* Requirements: 
+    - (Tested on CYGWIN, should work against any OS with) Python 2.7 and PyMySQL package. 
+    - Access to a MySQL database server.
 - MySQL database setup.
-        - Create a new 'weather_data' database and execute create table syntax that follows
+    - Create a new 'weather_data' database and execute create table syntax that follows
 ```SQL
 CREATE TABLE `raw_stats` (
 `meta_actualisation` int(11) unsigned NOT NULL DEFAULT '0',
@@ -47,7 +49,7 @@ PRIMARY KEY (`meta_actualisation`),
 KEY `meta_datehour` (`meta_datehour`)
 ) ENGINE=InnoDB;
 ```
-        - Create a hwreader user, used to insert and read from the new weather_data DB.
+    - Create a hwreader user, used to insert and read from the new weather_data DB.
 ```SQL
 CREATE user 'hwreader'@'%' identified by 'somepassw0rd';
 GRANT select,insert,update on weather_data.* to hwreader@'%';
