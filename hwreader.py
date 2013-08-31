@@ -98,7 +98,11 @@ def store_wd(db_cur, wd):
         print sql_data_str[:-1]
     # execute insertion, remove trailing ,
     else:
-        db_cur.execute(sql_data_str[:-1])
+        try:
+            db_cur.execute(sql_data_str[:-1])
+        except pymysql.err.IntegrityError, e:
+            print e
+            print "skipping data storage..."
 
 """
 main

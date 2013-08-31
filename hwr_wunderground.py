@@ -1,8 +1,8 @@
 #!/usr/bin/python
 """
 @author Nate Vogel
-@website http://funtothinkbabout.com
-@last_revision 2013-04-19
+@website http://funtothinkabout.com
+@last_revision 2013-08-31
 
 Reads stats written from the HeavyWeatherReader app, and uploads data to WUnderground.com
 Follows the API format provided http://wiki.wunderground.com/index.php/PWS_-_Upload_Protocol 
@@ -12,10 +12,10 @@ import ConfigParser
 import pymysql
 import signal
 import time
+import urllib
 import urllib2
 
 global debug
-debug = False
 
 """
 encapsulates connection handling in sending weather data
@@ -72,6 +72,7 @@ if __name__=="__main__":
     wu_pass = cfg_parser.get('heavyweatherreader_wunderground','passwd')
     wu_url = cfg_parser.get('heavyweatherreader_wunderground','wu_api_url')
     wu_interval = int(cfg_parser.get('heavyweatherreader_wunderground','wu_interval'))
+    debug = bool(int(cfg_parser.get('heavyweatherreader_wunderground','debug')))
 
     # leverage hwreader db credentials
     cfg_parser.read('hwreader.ini')
@@ -85,9 +86,10 @@ if __name__=="__main__":
     """
     stats_sql = "select wind_direction_deg as winddir, wind_speed as windspeedmph,\
                  temperature_outdoor as tempf, temperature_dewpoint as dewptf,\
-                 pressure_relative_inhg as baromin, humidity_outdoor as humidity,\
+                 wind_chill as temp2f, humidity_outdoor as humidity,\
+                 pressure_relative_inhg as baromin,\
                  rain_1h as rainin,\
-                 rain_24h as dailyrain,\
+                 rain_24h as dailyrainin,\
                  (select avg(s1.wind_speed) from\
                     (select wind_speed,meta_timestamp from raw_stats order by meta_actualisation desc limit 50) as s1\
                     where s1.meta_timestamp > date_sub(now(), INTERVAL 2 MINUTE)) as windspdmph_avg2m,\
@@ -100,7 +102,7 @@ if __name__=="__main__":
                  from raw_stats order by meta_actualisation desc limit 1"
 
     while True:
-        # TODO: figure out why db connection ha to be closed in order to get a clean result dict next run
+        # TODO: figure out why db connection has to be closed in order to get a clean result dict next run
         # initialize database for weather data storage
         weather_data_db = pymysql.connect(host=cfg_parser.get('weather_data_db','host'),
                                       user=cfg_parser.get('weather_data_db','user'),
@@ -112,7 +114,14 @@ if __name__=="__main__":
         # fetch data and build request URL
         d = weather_data_cur.fetchone()
         date_utc = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-        upload_url = "%s?ID=%s&PASSWORD=%s&dateutc=%s&winddir=%s&windspeedmph=%s&dailyrain=%s&tempf=%s&rainin=%s&baromin=%s&dewptf=%s&humidity=%s&windspdmph_avg2m=%s&winddir_avg2m=%s&windgustmph_10m=%s&softwaretype=ftta_wunderground&action=updateraw&realtime=1&rtfreq=%s" % (wu_url, wu_id, wu_pass, date_utc, d['winddir'], d['windspeedmph'], d['dailyrain'], d['tempf'], d['rainin'], d['baromin'], d['dewptf'], d['humidity'], d['windspdmph_avg2m'], d['winddir_avg2m'], d['windgustmph_avg10m'], wu_interval)
+
+        d['ID'] = wu_id
+        d['PASSWORD'] = wu_pass
+        d['dateutc'] = date_utc
+        d['rtfreq'] = wu_interval
+
+        encoded_args = urllib.urlencode(d)
+        upload_url = "%s%s" % (wu_url, encoded_args)
 
         if debug:
             print d,upload_url
