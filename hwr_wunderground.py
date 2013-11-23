@@ -101,6 +101,8 @@ if __name__=="__main__":
                      where s3.meta_timestamp > date_sub(now(), INTERVAL 10 MINUTE)) as windgustmph_avg10m\
                  from raw_stats order by meta_actualisation desc limit 1"
 
+    last_weather_data = {}
+    duplicate_count = 0
     while True:
         # TODO: figure out why db connection has to be closed in order to get a clean result dict next run
         # initialize database for weather data storage
@@ -120,13 +122,22 @@ if __name__=="__main__":
         d['dateutc'] = date_utc
         d['rtfreq'] = wu_interval
 
-        encoded_args = urllib.urlencode(d)
-        upload_url = "%s%s" % (wu_url, encoded_args)
-
-        if debug:
-            print d,upload_url
+        # avoid uploading duplicate weather data
+        if d == last_weather_data :
+            duplicate_count += 1
+            if duplicate_count > 10:
+                print '%s >> No weather data changes in 10 tries. :/ Check weather station.' % date_utc
         else:
-            print send_to_wunderground(upload_url, date_utc)
+            encoded_args = urllib.urlencode(d)
+            upload_url = "%s%s" % (wu_url, encoded_args)
+
+            duplicate_count = 0
+            last_weather_data = d
+
+            if debug:
+                print d,upload_url
+            else:
+                print send_to_wunderground(upload_url, date_utc)
 
         d.clear()
         weather_data_cur.close()
